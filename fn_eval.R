@@ -482,7 +482,7 @@ fn_scores_hd <- function(f, y, bin_edges, n_ens = 20, skip_evals = NULL){
 
 #### ENS: Evaluation of ensemble ####
 # Function to calculate evaluation measures of scores
-fn_scores_ens <- function(ens, y, skip_evals = NULL, scores_ens = TRUE){
+fn_scores_ens <- function(ens, y, skip_evals = NULL, scores_ens = TRUE, n_ens_ref = 20){
   ###-----------------------------------------------------------------------------
   ###Input
   #ens..........Ensemble data for prediction (n x n_ens matrix)
@@ -491,6 +491,8 @@ fn_scores_ens <- function(ens, y, skip_evals = NULL, scores_ens = TRUE){
   #.............Default: NULL -> Calculate all
   #scores_ens...Should scores of ensemble forecasts, interval lengths, ranks be calculated? (logical)
   #.............Default: TRUE -> Calculate
+  #n_ens_ref......Size of reference ensemble
+  #.............Default: 20 -> Size of COSMO-DE-EPS
   ###-----------------------------------------------------------------------------
   ###Output
   #...scores_ens...Data frames containing (n x 4 data frame):
@@ -508,9 +510,6 @@ fn_scores_ens <- function(ens, y, skip_evals = NULL, scores_ens = TRUE){
   
   # Calculate only if scores_ens is TRUE
   if(!scores_ens){ return(FALSE) }
-  
-  # Size of COSMO-DE-EPS
-  n_cosmo <- 20
   
   # Check if vector is given
   if(is.vector(ens)){ ens <- matrix(data = ens,
@@ -548,11 +547,11 @@ fn_scores_ens <- function(ens, y, skip_evals = NULL, scores_ens = TRUE){
   # Calculate ~(20 - 1)/(20 + 1)% prediction interval (corresponds to COSMO ensemble range)
   if(is.element("lgt", colnames(scores_ens))){
     # COSMO-ensemble size
-    if(n_ens == n_cosmo){ scores_ens[["lgt"]] <- apply(t(apply(ens, 1, range)), 1, diff) }
+    if(n_ens == n_ens_ref){ scores_ens[["lgt"]] <- apply(t(apply(ens, 1, range)), 1, diff) }
     # Corresponding quantiles (1/21 and 20/21) are included
-    else if(((n_ens + 1) %% (n_cosmo + 1)) == 0){ 
+    else if(((n_ens + 1) %% (n_ens_ref + 1)) == 0){ 
       # Indices of corresponding quantiles
-      i_lgt <- (n_ens + 1)/(n_cosmo + 1)*c(1, n_cosmo)
+      i_lgt <- (n_ens + 1)/(n_ens_ref + 1)*c(1, n_ens_ref)
       
       # Get quantiles
       q_lgt <- t(apply(ens, 1, sort))[,i_lgt]
@@ -568,7 +567,7 @@ fn_scores_ens <- function(ens, y, skip_evals = NULL, scores_ens = TRUE){
     else{ 
       scores_ens[["lgt"]] <- apply(ens, 1, function(x) 
         diff(quantile(x = x,
-                      probs = c(1, 20)/(n_cosmo + 1))) ) 
+                      probs = c(1, 20)/(n_ens_ref + 1))) ) 
     }
   }
   
