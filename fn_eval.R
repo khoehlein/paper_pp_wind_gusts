@@ -507,10 +507,13 @@ fn_scores_ens <- function(ens, y, skip_evals = NULL, scores_ens = TRUE, n_ens_re
   #### Initiation ####
   # Load packages
   library(scoringRules)
-  
+
+  # Cast y to vector for Python compatibility
+  y <- as.vector(y, 'numeric')
+
   # Calculate only if scores_ens is TRUE
   if(!scores_ens){ return(FALSE) }
-  
+
   # Check if vector is given
   if(is.vector(ens)){ ens <- matrix(data = ens,
                                     nrow = 1) }
@@ -533,48 +536,48 @@ fn_scores_ens <- function(ens, y, skip_evals = NULL, scores_ens = TRUE, n_ens_re
   # Calculate observation ranks
   if(is.element("rank", colnames(scores_ens))){
     scores_ens[["rank"]] <- apply(cbind(y, ens), 1, function(x){ rank(x, ties = "random")[1] }) }
-  
+
   # Calculate CRPS of raw ensemble
   if(is.element("crps", colnames(scores_ens))){
-    scores_ens[["crps"]] <- crps_sample(y = y, 
+    scores_ens[["crps"]] <- crps_sample(y = y,
                                         dat = ens) }
-  
+
   # Calculate Log-Score of raw ensemble
   if(is.element("logs", colnames(scores_ens))){
-    scores_ens[["logs"]] <- logs_sample(y = y, 
+    scores_ens[["logs"]] <- logs_sample(y = y,
                                         dat = ens) }
-  
+
   # Calculate ~(20 - 1)/(20 + 1)% prediction interval (corresponds to COSMO ensemble range)
   if(is.element("lgt", colnames(scores_ens))){
     # COSMO-ensemble size
     if(n_ens == n_ens_ref){ scores_ens[["lgt"]] <- apply(t(apply(ens, 1, range)), 1, diff) }
     # Corresponding quantiles (1/21 and 20/21) are included
-    else if(((n_ens + 1) %% (n_ens_ref + 1)) == 0){ 
+    else if(((n_ens + 1) %% (n_ens_ref + 1)) == 0){
       # Indices of corresponding quantiles
       i_lgt <- (n_ens + 1)/(n_ens_ref + 1)*c(1, n_ens_ref)
-      
+
       # Get quantiles
       q_lgt <- t(apply(ens, 1, sort))[,i_lgt]
-      
+
       # Transform if vector
       if(n == 1){ q_lgt <- matrix(data =  q_lgt,
                                   nrow = 1) }
-      
+
       # Calculate corresponding range
-      scores_ens[["lgt"]] <- apply(t(apply(q_lgt, 1, range)), 1, diff) 
+      scores_ens[["lgt"]] <- apply(t(apply(q_lgt, 1, range)), 1, diff)
     }
     # Quantiles are not included: Calculate corresponding via quantile function
-    else{ 
-      scores_ens[["lgt"]] <- apply(ens, 1, function(x) 
+    else{
+      scores_ens[["lgt"]] <- apply(ens, 1, function(x)
         diff(quantile(x = x,
-                      probs = c(1, 20)/(n_ens_ref + 1))) ) 
+                      probs = c(1, 20)/(n_ens_ref + 1))) )
     }
   }
-  
+
   # Calculate bias of median forecast
   if(is.element("e_md", colnames(scores_ens))){
     scores_ens[["e_md"]] <- apply(ens, 1, median) - y }
-  
+
   # Calculate bias of mean forecast
   if(is.element("e_me", colnames(scores_ens))){
     scores_ens[["e_me"]] <- rowMeans(ens) - y }
@@ -629,46 +632,46 @@ fn_scores_distr <- function(f, y, n_ens = 20, skip_evals = NULL){
                           lgt = numeric(length = n),
                           e_me = numeric(length = n),
                           e_md = numeric(length = n))
-  
+
   #### Prediction and score calculation ####
   # Calculate PIT values
   if(is.element("pit", colnames(scores_pp))){
-    scores_pp[["pit"]] <- crch::ptlogis(q = y, 
-                                        location = f[,1], 
+    scores_pp[["pit"]] <- crch::ptlogis(q = y,
+                                        location = f[,1],
                                         scale = f[,2],
                                         left = 0) }
-  
+
   # Calculate CRPS of forecasts
   if(is.element("crps", colnames(scores_pp))){
-    scores_pp[["crps"]] <- crps_tlogis(y = y, 
-                                       location = f[,1], 
+    scores_pp[["crps"]] <- crps_tlogis(y = y,
+                                       location = f[,1],
                                        scale = f[,2],
                                        lower = 0) }
-  
+
   # Calculate Log-Score of forecasts
   if(is.element("logs", colnames(scores_pp))){
-    scores_pp[["logs"]] <- logs_tlogis(y = y, 
-                                       location = f[,1], 
+    scores_pp[["logs"]] <- logs_tlogis(y = y,
+                                       location = f[,1],
                                        scale = f[,2],
                                        lower = 0) }
-  
+
   # Calculate length of ~(n_ens-1)/(n_ens+1) % prediction interval
   if(is.element("lgt", colnames(scores_pp))){
-    scores_pp[["lgt"]] <- crch::qtlogis(p = n_ens/(n_ens + 1), 
-                                        location = f[,1], 
+    scores_pp[["lgt"]] <- crch::qtlogis(p = n_ens/(n_ens + 1),
+                                        location = f[,1],
                                         scale = f[,2],
-                                        left = 0) - crch::qtlogis(p = 1/(n_ens + 1), 
-                                                                  location = f[,1], 
+                                        left = 0) - crch::qtlogis(p = 1/(n_ens + 1),
+                                                                  location = f[,1],
                                                                   scale = f[,2],
                                                                   left = 0) }
-  
+
   # Calculate bias of median forecast
   if(is.element("e_md", colnames(scores_pp))){
-    scores_pp[["e_md"]] <- crch::qtlogis(p = 0.5, 
-                                         location = f[,1], 
+    scores_pp[["e_md"]] <- crch::qtlogis(p = 0.5,
+                                         location = f[,1],
                                          scale = f[,2],
                                          left = 0) - y }
-  
+
   # Calculate bias of mean forecast
   if(is.element("e_me", colnames(scores_pp))){
     scores_pp[["e_me"]] <- (f[,1] - f[,2]*log(1 - plogis(- f[,1]/f[,2])))/(1 - plogis(- f[,1]/f[,2])) - y }
