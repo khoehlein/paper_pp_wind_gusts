@@ -570,7 +570,7 @@ fn_scores_ens <- function(ens, y, skip_evals = NULL, scores_ens = TRUE, n_ens_re
     else{
       scores_ens[["lgt"]] <- apply(ens, 1, function(x)
         diff(quantile(x = x,
-                      probs = c(1, 20)/(n_ens_ref + 1))) )
+                      probs = c(1, n_ens_ref)/(n_ens_ref + 1))) )
     }
   }
 
@@ -683,6 +683,111 @@ fn_scores_distr <- function(f, y, n_ens = 20, skip_evals = NULL){
   # Return
   return(scores_pp)
 }
+
+
+#### NORM: Evaluation of distributional forecasts ####
+# Function for prediction based on the distributional parameters #
+fn_scores_distr_tnorm <- function(f, y, n_ens = 20, skip_evals = NULL){
+  ###-----------------------------------------------------------------------------
+  ###Input
+  #f............Parameters of forecast distribution (n x n_par matrix)
+  #y............Observations (n vector)
+  #n_ens........Ensemble size (integer)
+  #.............Used for confidence level of prediction intervals
+  #.............Default: 20 -> COSMO-DE-EPS
+  #skip_evals...Skip the following evaluation measures (string vector)
+  #.............Default: NULL -> Calculate all
+  ###-----------------------------------------------------------------------------
+  ###Output
+  #res...List containing:
+  #......scores_pp...Data frames containing (n x 4 data frame):
+  #.........pit.........PIT values of distributional forecasts (n vector)
+  #.........crps........CRPS of forecasts (n vector)
+  #.........logs........Log-Score of forecasts (n vector)
+  #.........lgt.........Length of prediction interval (n vector)
+  #.........e_md........Bias of median forecast (n vector)
+  #.........e_me........Bias of mean forecast (n vector)
+  ###-----------------------------------------------------------------------------
+
+  #### Initiation ####
+  # Load packages
+  library(scoringRules)
+
+  # Input check
+  if(any(f[,2] < 0)){ print("Non-positive scale forecast!") }
+
+  #### Data preparation ####
+  # Number of predictions
+  n <- nrow(f)
+
+  # Make data frame
+  scores_pp <- data.frame(pit = numeric(length = n),
+                          crps = numeric(length = n),
+                          logs = numeric(length = n),
+                          lgt = numeric(length = n),
+                          e_me = numeric(length = n),
+                          e_md = numeric(length = n))
+
+  #### Prediction and score calculation ####
+  # Calculate PIT values
+  if(is.element("pit", colnames(scores_pp))){
+    scores_pp[["pit"]] <- crch::ptnorm(q = y,
+                                       location = f[,1],
+                                       scale = f[,2],
+                                       left = 0)
+    }
+
+  # Calculate CRPS of forecasts
+  if(is.element("crps", colnames(scores_pp))){
+    scores_pp[["crps"]] <- crps_tnorm(y = y,
+                                      location = f[,1],
+                                      scale = f[,2],
+                                      lower = 0)
+    }
+
+  # Calculate Log-Score of forecasts
+  if(is.element("logs", colnames(scores_pp))){
+    scores_pp[["logs"]] <- logs_tnorm(y = y,
+                                      location = f[,1],
+                                      scale = f[,2],
+                                      lower = 0)
+    }
+
+  # Calculate length of ~(n_ens-1)/(n_ens+1) % prediction interval
+  if(is.element("lgt", colnames(scores_pp))){
+    scores_pp[["lgt"]] <- crch::qtnorm(p = n_ens/(n_ens + 1),
+                                       location = f[,1],
+                                       scale = f[,2],
+                                       left = 0) - crch::qtnorm(p = 1/(n_ens + 1),
+                                                                location = f[,1],
+                                                                scale = f[,2],
+                                                                left = 0)
+    }
+
+  # Calculate bias of median forecast
+  if(is.element("e_md", colnames(scores_pp))){
+    scores_pp[["e_md"]] <- crch::qtnorm(p = 0.5,
+                                        location = f[,1],
+                                        scale = f[,2],
+                                        left = 0) - y }
+
+  # Calculate bias of mean forecast
+  if(is.element("e_me", colnames(scores_pp))){
+    # compute mean correction due to truncation
+    alpha <- - f[,1] / f[,2]
+    log_correction <- dnorm(alpha, log=True) - pnorm(alpha, lower.tail=False, log.p=True) + log(f[,2])
+    # compute bias
+    scores_pp[["e_me"]] <- f[,1] + exp(log_correction) - y
+  }
+
+  #### Output ####
+  # Skip evaluation measures
+  scores_pp <- as.data.frame(scores_pp[,!is.element(colnames(scores_pp), skip_evals), drop = FALSE])
+
+  # Return
+  return(scores_pp)
+}
+
 
 #### Diebold-Mariano test ####
 # Function for Diebold-Mariano test statistic
