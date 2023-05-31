@@ -732,8 +732,8 @@ fn_scores_distr_tnorm <- function(f, y, n_ens = 20, skip_evals = NULL){
   # Calculate PIT values
   if(is.element("pit", colnames(scores_pp))){
     scores_pp[["pit"]] <- crch::ptnorm(q = y,
-                                       location = f[,1],
-                                       scale = f[,2],
+                                       mean = f[,1],
+                                       sd = f[,2],
                                        left = 0)
     }
 
@@ -756,26 +756,26 @@ fn_scores_distr_tnorm <- function(f, y, n_ens = 20, skip_evals = NULL){
   # Calculate length of ~(n_ens-1)/(n_ens+1) % prediction interval
   if(is.element("lgt", colnames(scores_pp))){
     scores_pp[["lgt"]] <- crch::qtnorm(p = n_ens/(n_ens + 1),
-                                       location = f[,1],
-                                       scale = f[,2],
+                                       mean = f[,1],
+                                       sd = f[,2],
                                        left = 0) - crch::qtnorm(p = 1/(n_ens + 1),
-                                                                location = f[,1],
-                                                                scale = f[,2],
+                                                                mean = f[,1],
+                                                                sd = f[,2],
                                                                 left = 0)
     }
 
   # Calculate bias of median forecast
   if(is.element("e_md", colnames(scores_pp))){
     scores_pp[["e_md"]] <- crch::qtnorm(p = 0.5,
-                                        location = f[,1],
-                                        scale = f[,2],
+                                        mean = f[,1],
+                                        sd = f[,2],
                                         left = 0) - y }
 
   # Calculate bias of mean forecast
   if(is.element("e_me", colnames(scores_pp))){
     # compute mean correction due to truncation
     alpha <- - f[,1] / f[,2]
-    log_correction <- dnorm(alpha, log=True) - pnorm(alpha, lower.tail=False, log.p=True) + log(f[,2])
+    log_correction <- dnorm(alpha, log=TRUE) - pnorm(alpha, lower.tail=FALSE, log.p=TRUE) + log(f[,2])
     # compute bias
     scores_pp[["e_me"]] <- f[,1] + exp(log_correction) - y
   }
