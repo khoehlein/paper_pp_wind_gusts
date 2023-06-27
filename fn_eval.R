@@ -525,12 +525,14 @@ fn_scores_ens <- function(ens, y, skip_evals = NULL, scores_ens = TRUE, n_ens_re
   n_ens <- ncol(ens)
   
   # Make data frame
-  scores_ens <- data.frame(rank = numeric(length = n),
-                           crps = numeric(length = n),
-                           logs = numeric(length = n),
-                           lgt = numeric(length = n),
-                           e_me = numeric(length = n),
-                           e_md = numeric(length = n))
+  scores_ens <- data.frame(
+#                            rank = numeric(length = n), # 5.8 sec
+                           crps = numeric(length = n), # 4.25 sec
+#                            logs = numeric(length = n), # 8 sec
+                           lgt = numeric(length = n) # 1.2 sec
+#                            e_me = numeric(length = n), # 0.48 sec
+#                            e_md = numeric(length = n) # 2.0 sec
+)
   
   #### Calculation ####
   # Calculate observation ranks
